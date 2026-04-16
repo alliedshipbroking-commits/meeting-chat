@@ -68,7 +68,7 @@ async function sendMessage() {
 
     const data = await response.json();
 
-    addMessage("Bot: " + data.reply, "bot");
+    addMessage("Bot: " + (data.reply || JSON.stringify(data)), "bot");
 
   } catch (error) {
     addMessage("Bot: Error connecting to server", "bot");
