@@ -44,11 +44,23 @@ async function sendMessage() {
   addMessage("You: " + text, "user");
   input.value = "";
 
-  // ✅ Simulated response (no n8n)
-  const data = { reply: "Testing... received: " + text };
+  try {
+    const response = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: text })
+    });
 
-  // ✅ This is what was missing / broken
-  addMessage("Bot: " + data.reply, "bot");
+    const data = await response.json();
+
+    addMessage("Bot: " + data.reply, "bot");
+
+  } catch (error) {
+    addMessage("Bot: Error connecting to server", "bot");
+    console.error(error);
+  }
 }
 
 function addMessage(text, type) {
