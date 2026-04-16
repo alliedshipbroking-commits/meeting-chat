@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Meeting Room Chat</title>
+  <style>
+    body {
+      font-family: Arial;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+    #chat {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 400px;
+      overflow-y: auto;
+    }
+    .user { color: blue; }
+    .bot { color: green; }
+    input {
+      width: 80%;
+      padding: 10px;
+    }
+    button {
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Meeting Room Assistant</h2>
+
+<div id="chat"></div>
+
+<input id="message" placeholder="Type your message..." />
+<button onclick="sendMessage()">Send</button>
+
+<script>
+async function sendMessage() {
+  const input = document.getElementById("message");
+  const text = input.value;
+
+  if (!text) return;
+
+  addMessage("You: " + text, "user");
+  input.value = "";
+
+  // ✅ Simulated response (no n8n)
+  const data = { reply: "Testing... received: " + text };
+
+  // ✅ This is what was missing / broken
+  addMessage("Bot: " + data.reply, "bot");
+}
+
+function addMessage(text, type) {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = type;
+  div.innerText = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+</script>
+
+</body>
+</html>
