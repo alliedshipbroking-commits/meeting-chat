@@ -45,22 +45,22 @@ async function sendMessage() {
   input.value = "";
 
   try {
-    const response = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ message: text })
-    });
+  const response = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ message: text })
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    addMessage("Bot: " + data.reply, "bot");
+  addMessage("Bot: " + data.reply, "bot");
 
-  } catch (error) {
-    addMessage("Bot: Error connecting to server", "bot");
-    console.error(error);
-  }
+} catch (error) {
+  addMessage("Bot: Error connecting to server", "bot");
+  console.error(error);
+}
 }
 
 function addMessage(text, type) {
