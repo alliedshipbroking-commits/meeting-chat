@@ -100,6 +100,47 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    eventClick: async function(info) {
+
+  const confirmDelete = confirm("Cancel this booking?");
+
+  if (!confirmDelete) return;
+
+  const selectedRoom = document.getElementById("room").value;
+
+  const calendars = {
+    "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+    "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+  };
+
+  const calendarId = calendars[selectedRoom];
+
+  try {
+    await fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        eventId: info.event.id,
+        calendarId: calendarId
+      })
+    });
+
+    // 🔥 remove from UI instantly
+    info.event.remove();
+
+    // 🔥 refresh to sync
+    setTimeout(() => {
+      calendar.refetchEvents();
+    }, 500);
+
+  } catch (err) {
+    console.error(err);
+    alert("Error deleting event");
+  }
+
+}
     initialView: 'timeGridWeek',
     height: 650,
     timeZone: 'Europe/Athens',
