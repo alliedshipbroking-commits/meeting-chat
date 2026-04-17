@@ -45,6 +45,11 @@
       cursor: pointer;
     }
 
+    #deleteBtn {
+      background: red;
+      display: none;
+    }
+
     #calendar {
       max-width: 1100px;
       margin: 30px auto;
@@ -73,7 +78,8 @@
   <input type="text" id="name" placeholder="Your Name">
   <input type="text" id="title" placeholder="Meeting Title">
 
-  <button onclick="book()">Book Meeting</button>
+  <button id="mainBtn" onclick="book()">Book Meeting</button>
+  <button id="deleteBtn" onclick="deleteSelected()">Delete Meeting</button>
 </div>
 
 <div id="calendar"></div>
@@ -81,6 +87,7 @@
 <script>
 
 let calendar;
+let selectedEvent = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -95,34 +102,28 @@ document.addEventListener('DOMContentLoaded', function () {
     height: 650,
     timeZone: 'Europe/Athens',
 
-    // DELETE EVENT
+    // 🔥 CLICK EVENT = EDIT MODE
     eventClick: function(info) {
 
-      const confirmDelete = confirm("Cancel this booking?");
-      if (!confirmDelete) return;
+      selectedEvent = info.event;
 
-      const selectedRoom = document.getElementById("room").value;
-      const calendarId = calendars[selectedRoom];
+      const start = new Date(info.event.start);
 
-      fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          eventId: info.event.id,
-          calendarId: calendarId
-        })
-      })
-      .then(() => {
-        info.event.remove();
-        setTimeout(() => calendar.refetchEvents(), 500);
-      })
-      .catch(() => alert("Error deleting event"));
+      document.getElementById("date").value = start.toISOString().split("T")[0];
+      document.getElementById("time").value = start.toTimeString().slice(0,5);
+      document.getElementById("title").value = info.event.title;
 
+      if (info.event.end) {
+        const end = new Date(info.event.end);
+        const duration = (end - start) / (1000 * 60 * 60);
+        document.getElementById("duration").value = duration;
+      }
+
+      document.getElementById("mainBtn").innerText = "Update Meeting";
+      document.getElementById("deleteBtn").style.display = "block";
     },
 
-    // LOAD EVENTS (FIXED)
+    // LOAD EVENTS
     events: function(fetchInfo, successCallback, failureCallback) {
 
       const selectedRoom = document.getElementById("room").value;
@@ -167,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-// BOOK FUNCTION
+// 🔥 BOOK OR UPDATE
 function book() {
 
   const data = {
@@ -179,6 +180,45 @@ function book() {
     title: document.getElementById("title").value
   };
 
+  const calendars = {
+    "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+    "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+  };
+
+  // 🔥 UPDATE MODE
+  if (selectedEvent) {
+
+    fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        eventId: selectedEvent.id,
+        calendarId: calendars[data.room]
+      })
+    })
+    .then(() => {
+      return fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+    })
+    .then(res => res.json())
+    .then(() => {
+
+      alert("Updated!");
+
+      resetForm();
+      calendar.refetchEvents();
+
+    });
+
+    return;
+  }
+
+  // 🔥 CREATE
   fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
     method: "POST",
     headers: {
@@ -190,14 +230,55 @@ function book() {
   .then(result => {
 
     alert(result.reply);
+    calendar.refetchEvents();
 
-    setTimeout(() => {
-      calendar.refetchEvents();
-    }, 800);
+  });
 
+}
+
+
+// 🔥 DELETE BUTTON
+function deleteSelected() {
+
+  if (!selectedEvent) return;
+
+  const selectedRoom = document.getElementById("room").value;
+
+  const calendars = {
+    "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+    "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+  };
+
+  fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      eventId: selectedEvent.id,
+      calendarId: calendars[selectedRoom]
+    })
   })
-  .catch(() => alert("Error booking meeting"));
+  .then(() => {
+    alert("Deleted!");
+    resetForm();
+    calendar.refetchEvents();
+  });
 
+}
+
+
+// 🔥 RESET FORM
+function resetForm() {
+  selectedEvent = null;
+
+  document.getElementById("mainBtn").innerText = "Book Meeting";
+  document.getElementById("deleteBtn").style.display = "none";
+
+  document.getElementById("date").value = "";
+  document.getElementById("time").value = "";
+  document.getElementById("duration").value = 1;
+  document.getElementById("title").value = "";
 }
 
 </script>
