@@ -106,30 +106,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
     events: async function(fetchInfo, successCallback) {
 
+      console.log("Reloading events...");
+
       const selectedRoom = document.getElementById("room").value;
       const calendarId = calendars[selectedRoom];
 
-      const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          calendarId: calendarId
-        })
-      });
+      try {
+        const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ calendarId })
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      const events = data.map(e => ({
-        id: e.id,
-        title: e.summary || "Booked",
-        start: e.start.dateTime,
-        end: e.end.dateTime,
-        color: selectedRoom === "room 1" ? "#3b82f6" : "#10b981"
-      }));
+        // 🔥 SAFE handling
+        const events = (Array.isArray(data) ? data : [data])
+          .filter(e => e && e.start && e.end)
+          .map(e => ({
+            id: e.id,
+            title: e.summary || "Booked",
+            start: e.start.dateTime || e.start,
+            end: e.end.dateTime || e.end,
+            color: selectedRoom === "room 1" ? "#3b82f6" : "#10b981"
+          }));
 
-      successCallback(events);
+        successCallback(events);
+
+      } catch (err) {
+        console.error("Error loading events:", err);
+        successCallback([]);
+      }
     }
   });
 
@@ -139,6 +148,11 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById("room").addEventListener("change", () => {
     calendar.refetchEvents();
   });
+
+  // 🔥 AUTO REFRESH EVERY 10s
+  setInterval(() => {
+    calendar.refetchEvents();
+  }, 10000);
 
 });
 
@@ -155,20 +169,29 @@ async function book() {
     title: document.getElementById("title").value
   };
 
-  const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(data)
-  });
+  try {
+    const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
 
-  const result = await res.json();
+    const result = await res.json();
 
-  alert(result.reply);
+    alert(result.reply);
 
-  // refresh calendar after booking
-  calendar.refetchEvents();
+    // 🔥 STRONG REFRESH (with delay)
+    setTimeout(() => {
+      calendar.removeAllEvents();
+      calendar.refetchEvents();
+    }, 800);
+
+  } catch (err) {
+    console.error(err);
+    alert("Error booking meeting");
+  }
 }
 
 </script>
