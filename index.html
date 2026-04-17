@@ -1,258 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Meeting Room Booking</title>
+
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
+      font-family: Arial;
+      background: linear-gradient(135deg, #6c63ff, #8360c3);
       margin: 0;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-
-    .wrapper {
-      width: 100%;
-      max-width: 560px;
-    }
-
-    .header {
+      padding: 40px;
+      color: white;
       text-align: center;
-      color: #ffffff;
-      margin-bottom: 20px;
     }
 
-    .header h1 {
-      margin: 0 0 8px;
-      font-size: 32px;
-      font-weight: 700;
+    h1 {
+      margin-bottom: 10px;
     }
 
-    .header p {
-      margin: 0;
-      font-size: 15px;
-      opacity: 0.9;
+    .controls {
+      margin: 20px auto;
     }
 
-    .container {
-      background: #ffffff;
-      border-radius: 18px;
-      padding: 28px;
-      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
-    }
-
-    .form-grid {
-      display: grid;
-      gap: 16px;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-    }
-
-    label {
-      margin-bottom: 7px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    input,
     select {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      font-size: 15px;
-      background: #f9fafb;
-      transition: all 0.2s ease;
-    }
-
-    input:focus,
-    select:focus {
-      outline: none;
-      border-color: #667eea;
-      background: #ffffff;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
-    }
-
-    .two-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-
-    button {
-      width: 100%;
-      margin-top: 22px;
-      padding: 14px;
+      padding: 10px;
+      border-radius: 8px;
       border: none;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #667eea, #5a67d8);
-      color: #ffffff;
       font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.2s ease;
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.25);
     }
 
-    button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 14px 24px rgba(102, 126, 234, 0.32);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    .result {
-      margin-top: 18px;
-      min-height: 24px;
-      text-align: center;
-      font-size: 15px;
-      font-weight: 600;
-      color: #1f2937;
-    }
-
-    .result.success {
-      color: #15803d;
-    }
-
-    .result.error {
-      color: #b91c1c;
-    }
-
-    @media (max-width: 640px) {
-      .container {
-        padding: 22px;
-      }
-
-      .header h1 {
-        font-size: 26px;
-      }
-
-      .two-cols {
-        grid-template-columns: 1fr;
-      }
+    #calendar {
+      max-width: 1100px;
+      margin: 30px auto;
+      background: white;
+      color: black;
+      padding: 20px;
+      border-radius: 16px;
     }
   </style>
 </head>
+
 <body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>Meeting Room Booking</h1>
-      <p>Book your room quickly and clearly</p>
-    </div>
 
-    <div class="container">
-      <div class="form-grid">
-        <div class="field">
-          <label for="calendar">Calendar</label>
-          <select id="calendar">
-            <option value="meeting">Meeting Rooms</option>
-          </select>
-        </div>
+<h1>Meeting Room Booking</h1>
+<p>Select a room to view availability</p>
 
-        <div class="field">
-          <label for="room">Room</label>
-          <select id="room">
-            <option value="room 1">Small Room</option>
-            <option value="room 2">Big Room</option>
-          </select>
-        </div>
+<div class="controls">
+  <select id="roomSelect">
+    <option value="room 1">Big Room</option>
+    <option value="room 2">Small Room</option>
+  </select>
+</div>
 
-        <div class="two-cols">
-          <div class="field">
-            <label for="date">Date</label>
-            <input type="date" id="date" />
-          </div>
+<div id="calendar"></div>
 
-          <div class="field">
-            <label for="time">Time</label>
-            <input type="time" id="time" />
-          </div>
-        </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
-        <div class="field">
-          <label for="duration">Duration (hours)</label>
-          <input type="number" id="duration" min="1" value="1" />
-        </div>
+  const roomSelect = document.getElementById("roomSelect");
 
-        <div class="field">
-          <label for="name">Your Name</label>
-          <input type="text" id="name" placeholder="e.g. Sakis" />
-        </div>
+  const calendars = {
+    "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+    "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+  };
 
-        <div class="field">
-          <label for="title">Meeting Title</label>
-          <input type="text" id="title" placeholder="e.g. Weekly Ops Meeting" />
-        </div>
-      </div>
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    initialView: 'timeGridWeek',
+    height: 650,
+    timeZone: 'Europe/Athens',
 
-      <button type="button" onclick="bookRoom()">Book Meeting</button>
+    events: async function(fetchInfo, successCallback) {
 
-      <div class="result" id="result"></div>
-    </div>
-  </div>
+      const selectedRoom = roomSelect.value;
+      const calendarId = calendars[selectedRoom];
 
-  <script>
-    async function bookRoom() {
-      const resultBox = document.getElementById("result");
-      resultBox.className = "result";
+      const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          calendarId: calendarId
+        })
+      });
 
-      const data = {
-        calendar: document.getElementById("calendar").value,
-        room: document.getElementById("room").value,
-        date: document.getElementById("date").value,
-        time: document.getElementById("time").value,
-        duration: document.getElementById("duration").value,
-        name: document.getElementById("name").value.trim(),
-        title: document.getElementById("title").value.trim()
-      };
+      const data = await res.json();
 
-      if (!data.date || !data.time || !data.duration || !data.name || !data.title) {
-        resultBox.textContent = "Please fill all required fields.";
-        resultBox.classList.add("error");
-        return;
-      }
+      const events = data.map(e => ({
+        id: e.id,
+        title: e.summary || "Booked",
+        start: e.start.dateTime,
+        end: e.end.dateTime,
+        color: selectedRoom === "room 1" ? "#3b82f6" : "#10b981"
+      }));
 
-      resultBox.textContent = "Checking availability...";
-      
-      try {
-        const response = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          resultBox.textContent = result.reply || "Something went wrong.";
-          resultBox.classList.add("error");
-          return;
-        }
-
-        resultBox.textContent = result.reply || "Booking completed successfully.";
-        resultBox.classList.add("success");
-      } catch (error) {
-        resultBox.textContent = "Server error. Please try again.";
-        resultBox.classList.add("error");
-      }
+      successCallback(events);
     }
-  </script>
+  });
+
+  calendar.render();
+
+  roomSelect.addEventListener("change", () => {
+    calendar.refetchEvents();
+  });
+
+});
+</script>
+
 </body>
 </html>
