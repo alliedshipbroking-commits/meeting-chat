@@ -17,10 +17,6 @@
       text-align: center;
     }
 
-    h1 {
-      margin-bottom: 10px;
-    }
-
     .form-box {
       background: white;
       color: black;
@@ -63,11 +59,8 @@
 <body>
 
 <h1>Meeting Room Booking</h1>
-<p>Select a room and book your meeting</p>
 
-<!-- FORM -->
 <div class="form-box">
-
   <select id="room">
     <option value="room 1">Big Room</option>
     <option value="room 2">Small Room</option>
@@ -75,17 +68,14 @@
 
   <input type="date" id="date">
   <input type="time" id="time">
-
-  <input type="number" id="duration" value="1" placeholder="Duration (hours)">
+  <input type="number" id="duration" value="1">
 
   <input type="text" id="name" placeholder="Your Name">
   <input type="text" id="title" placeholder="Meeting Title">
 
   <button onclick="book()">Book Meeting</button>
-
 </div>
 
-<!-- CALENDAR -->
 <div id="calendar"></div>
 
 <script>
@@ -93,8 +83,6 @@
 let calendar;
 
 document.addEventListener('DOMContentLoaded', function () {
-
-  console.log("SCRIPT LOADED");
 
   const calendars = {
     "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
@@ -107,79 +95,65 @@ document.addEventListener('DOMContentLoaded', function () {
     height: 650,
     timeZone: 'Europe/Athens',
 
-    eventClick: async function(info) {
+    // DELETE EVENT
+    eventClick: function(info) {
 
-      const confirmDelete = confirm(`Cancel "${info.event.title}"?`);
+      const confirmDelete = confirm("Cancel this booking?");
       if (!confirmDelete) return;
 
       const selectedRoom = document.getElementById("room").value;
       const calendarId = calendars[selectedRoom];
 
-      try {
-        const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            eventId: info.event.id,
-            calendarId: calendarId
-          })
-        });
-
-        const text = await res.text();
-        console.log("DELETE RESPONSE:", text);
-
+      fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          eventId: info.event.id,
+          calendarId: calendarId
+        })
+      })
+      .then(() => {
         info.event.remove();
+        setTimeout(() => calendar.refetchEvents(), 500);
+      })
+      .catch(() => alert("Error deleting event"));
 
-        setTimeout(() => {
-          calendar.refetchEvents();
-        }, 500);
-
-      } catch (err) {
-        console.error(err);
-        alert("Error deleting event");
-      }
     },
 
-    events: async function(fetchInfo, successCallback) {
-
-      console.log("Loading events...");
+    // LOAD EVENTS (FIXED)
+    events: function(fetchInfo, successCallback, failureCallback) {
 
       const selectedRoom = document.getElementById("room").value;
       const calendarId = calendars[selectedRoom];
 
-      try {
-        const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ calendarId })
-        });
-
-        const text = await res.text();
-        console.log("RAW RESPONSE:", text);
-
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          console.error("Invalid JSON");
-          successCallback([]);
-          return;
-        }
+      fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ calendarId })
+      })
+      .then(res => res.json())
+      .then(data => {
 
         const events = (Array.isArray(data) ? data : [])
           .map(e => ({
             id: e.id,
             title: e.summary || "Booked",
-            start: e.start?.dateTime,
-            end: e.end?.dateTime
+            start: e.start?.dateTime || e.start,
+            end: e.end?.dateTime || e.end
           }));
 
         successCallback(events);
 
-      } catch (err) {
-        console.error("Fetch error:", err);
-        successCallback([]);
-      }
+      })
+      .catch(err => {
+        console.error(err);
+        failureCallback(err);
+      });
+
     }
 
   });
@@ -194,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 // BOOK FUNCTION
-async function book() {
+function book() {
 
   const data = {
     room: document.getElementById("room").value,
@@ -205,23 +179,15 @@ async function book() {
     title: document.getElementById("title").value
   };
 
-  try {
-    const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
-
-    const text = await res.text();
-    console.log("BOOK RESPONSE:", text);
-
-    let result;
-    try {
-      result = JSON.parse(text);
-    } catch {
-      alert("Invalid response from server");
-      return;
-    }
+  fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  })
+  .then(res => res.json())
+  .then(result => {
 
     alert(result.reply);
 
@@ -229,10 +195,9 @@ async function book() {
       calendar.refetchEvents();
     }, 800);
 
-  } catch (err) {
-    console.error(err);
-    alert("Error booking meeting");
-  }
+  })
+  .catch(() => alert("Error booking meeting"));
+
 }
 
 </script>
