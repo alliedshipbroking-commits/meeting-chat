@@ -21,15 +21,32 @@
       margin-bottom: 10px;
     }
 
-    .controls {
+    .form-box {
+      background: white;
+      color: black;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 600px;
       margin: 20px auto;
     }
 
-    select {
+    input, select {
       padding: 10px;
+      margin: 5px;
+      width: 90%;
       border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 12px;
+      width: 95%;
       border: none;
-      font-size: 16px;
+      border-radius: 8px;
+      background: #6c63ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
     }
 
     #calendar {
@@ -46,35 +63,50 @@
 <body>
 
 <h1>Meeting Room Booking</h1>
-<p>Select a room to view availability</p>
+<p>Select a room and book your meeting</p>
 
-<div class="controls">
-  <select id="roomSelect">
+<!-- FORM -->
+<div class="form-box">
+
+  <select id="room">
     <option value="room 1">Big Room</option>
     <option value="room 2">Small Room</option>
   </select>
+
+  <input type="date" id="date">
+  <input type="time" id="time">
+
+  <input type="number" id="duration" value="1" placeholder="Duration (hours)">
+
+  <input type="text" id="name" placeholder="Your Name">
+  <input type="text" id="title" placeholder="Meeting Title">
+
+  <button onclick="book()">Book Meeting</button>
+
 </div>
 
+<!-- CALENDAR -->
 <div id="calendar"></div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
 
-  const roomSelect = document.getElementById("roomSelect");
+let calendar; // GLOBAL
+
+document.addEventListener('DOMContentLoaded', function () {
 
   const calendars = {
     "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
     "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
   };
 
-  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView: 'timeGridWeek',
     height: 650,
     timeZone: 'Europe/Athens',
 
     events: async function(fetchInfo, successCallback) {
 
-      const selectedRoom = roomSelect.value;
+      const selectedRoom = document.getElementById("room").value;
       const calendarId = calendars[selectedRoom];
 
       const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
@@ -103,11 +135,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
   calendar.render();
 
-  roomSelect.addEventListener("change", () => {
+  // refresh when room changes
+  document.getElementById("room").addEventListener("change", () => {
     calendar.refetchEvents();
   });
 
 });
+
+
+// BOOK FUNCTION
+async function book() {
+
+  const data = {
+    room: document.getElementById("room").value,
+    date: document.getElementById("date").value,
+    time: document.getElementById("time").value,
+    duration: document.getElementById("duration").value,
+    name: document.getElementById("name").value,
+    title: document.getElementById("title").value
+  };
+
+  const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
+
+  const result = await res.json();
+
+  alert(result.reply);
+
+  // refresh calendar after booking
+  calendar.refetchEvents();
+}
+
 </script>
 
 </body>
