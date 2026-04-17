@@ -94,6 +94,8 @@ let calendar;
 
 document.addEventListener('DOMContentLoaded', function () {
 
+  console.log("SCRIPT LOADED");
+
   const calendars = {
     "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
     "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
@@ -105,7 +107,6 @@ document.addEventListener('DOMContentLoaded', function () {
     height: 650,
     timeZone: 'Europe/Athens',
 
-    // 🔥 DELETE EVENT
     eventClick: async function(info) {
 
       const confirmDelete = confirm(`Cancel "${info.event.title}"?`);
@@ -115,16 +116,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const calendarId = calendars[selectedRoom];
 
       try {
-        await fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+        const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             eventId: info.event.id,
             calendarId: calendarId
           })
         });
+
+        const text = await res.text();
+        console.log("DELETE RESPONSE:", text);
 
         info.event.remove();
 
@@ -138,10 +140,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
 
-    // 🔥 LOAD EVENTS
     events: async function(fetchInfo, successCallback) {
 
-      console.log("Reloading events...");
+      console.log("Loading events...");
 
       const selectedRoom = document.getElementById("room").value;
       const calendarId = calendars[selectedRoom];
@@ -149,28 +150,34 @@ document.addEventListener('DOMContentLoaded', function () {
       try {
         const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ calendarId })
         });
 
-        const data = await res.json();
+        const text = await res.text();
+        console.log("RAW RESPONSE:", text);
 
-        const events = (Array.isArray(data) ? data : [data])
-          .filter(e => e && e.start && e.end)
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.error("Invalid JSON");
+          successCallback([]);
+          return;
+        }
+
+        const events = (Array.isArray(data) ? data : [])
           .map(e => ({
             id: e.id,
             title: e.summary || "Booked",
-            start: e.start.dateTime || e.start,
-            end: e.end.dateTime || e.end,
-            color: selectedRoom === "room 1" ? "#3b82f6" : "#10b981"
+            start: e.start?.dateTime,
+            end: e.end?.dateTime
           }));
 
         successCallback(events);
 
       } catch (err) {
-        console.error("Error loading events:", err);
+        console.error("Fetch error:", err);
         successCallback([]);
       }
     }
@@ -179,20 +186,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   calendar.render();
 
-  // 🔁 ROOM CHANGE
   document.getElementById("room").addEventListener("change", () => {
     calendar.refetchEvents();
   });
 
-  // 🔁 AUTO REFRESH
-  setInterval(() => {
-    calendar.refetchEvents();
-  }, 10000);
-
 });
 
 
-// 🔥 BOOK FUNCTION
+// BOOK FUNCTION
 async function book() {
 
   const data = {
@@ -207,18 +208,24 @@ async function book() {
   try {
     const res = await fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
     });
 
-    const result = await res.json();
+    const text = await res.text();
+    console.log("BOOK RESPONSE:", text);
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch {
+      alert("Invalid response from server");
+      return;
+    }
 
     alert(result.reply);
 
     setTimeout(() => {
-      calendar.removeAllEvents();
       calendar.refetchEvents();
     }, 800);
 
