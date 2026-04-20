@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Meeting Room Booking</title>
 
+  <!-- FullCalendar -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
@@ -25,7 +27,8 @@
       margin: 20px auto;
     }
 
-    input, select {
+    input,
+    select {
       padding: 10px;
       margin: 5px;
       width: 90%;
@@ -33,24 +36,21 @@
       border: 1px solid #ccc;
     }
 
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
     button {
       padding: 12px;
       width: 95%;
       border: none;
       border-radius: 8px;
+      background: #6c63ff;
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
 
-    #mainBtn { background: #6c63ff; }
-    #deleteBtn { background: red; display: none; }
+    #deleteBtn {
+      background: red;
+      display: none;
+    }
 
     #calendar {
       max-width: 1100px;
@@ -65,204 +65,222 @@
 
 <body>
 
-<h1>Meeting Room Booking</h1>
+  <h1>Meeting Room Booking</h1>
 
-<div class="form-box">
-  <select id="room">
-    <option value="room 2">Big Room</option>
-    <option value="room 1">Small Room</option>
-  </select>
+  <div class="form-box">
+    <select id="room">
+      <option value="room 1">Big Room</option>
+      <option value="room 2">Small Room</option>
+    </select>
 
-  <input type="date" id="date">
-  <input type="time" id="time">
-  <input type="number" id="duration" value="1">
+    <input type="date" id="date">
+    <input type="time" id="time">
+    <input type="number" id="duration" value="1">
 
-  <input type="text" id="name" placeholder="Your Name">
-  <input type="text" id="title" placeholder="Meeting Title">
+    <input type="text" id="name" placeholder="Your Name">
+    <input type="text" id="title" placeholder="Meeting Title">
 
-  <div class="actions">
     <button id="mainBtn" onclick="book()">Book Meeting</button>
     <button id="deleteBtn" onclick="deleteSelected()">Delete Meeting</button>
   </div>
-</div>
 
-<div id="calendar"></div>
+  <div id="calendar"></div>
 
-<script>
+  <script>
+    let calendar;
+    let selectedEvent = null;
 
-let calendar;
-let selectedEvent = null;
+    document.addEventListener('DOMContentLoaded', function () {
 
-const calendars = {
-  "room 1": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com",
-  "room 2": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com"
-};
+      const calendars = {
+        "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+        "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+      };
 
-document.addEventListener('DOMContentLoaded', function () {
+      calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
 
-  calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+        initialView: 'timeGridWeek',
+        height: 650,
+        timeZone: 'Europe/Athens',
 
-    initialView: 'timeGridWeek',
-    height: 650,
-    timeZone: 'Europe/Athens',
+        // CLICK EVENT = EDIT MODE
+        eventClick: function (info) {
 
-    eventClick: function(info) {
+          selectedEvent = info.event;
 
-      selectedEvent = info.event;
-      selectedEvent.calendarId = info.event.extendedProps.calendarId;
+          const start = new Date(info.event.start);
 
-      const start = info.event.start;
+          document.getElementById("date").value = start.toISOString().split("T")[0];
+          document.getElementById("time").value = start.toTimeString().slice(0, 5);
+          document.getElementById("title").value = info.event.title;
 
-      const y = start.getFullYear();
-      const m = String(start.getMonth() + 1).padStart(2, "0");
-      const d = String(start.getDate()).padStart(2, "0");
+          if (info.event.end) {
+            const end = new Date(info.event.end);
+            const duration = (end - start) / (1000 * 60 * 60);
+            document.getElementById("duration").value = duration;
+          }
 
-      const h = String(start.getHours()).padStart(2, "0");
-      const min = String(start.getMinutes()).padStart(2, "0");
+          document.getElementById("mainBtn").innerText = "Update Meeting";
+          document.getElementById("deleteBtn").style.display = "block";
+        },
 
-      document.getElementById("date").value = `${y}-${m}-${d}`;
-      document.getElementById("time").value = `${h}:${min}`;
-      document.getElementById("title").value = info.event.title;
+        // LOAD EVENTS
+        events: function (fetchInfo, successCallback, failureCallback) {
 
-      if (info.event.end) {
-        const duration = (info.event.end - start) / (1000 * 60 * 60);
-        document.getElementById("duration").value = duration;
-      }
+          const selectedRoom = document.getElementById("room").value;
+          const calendarId = calendars[selectedRoom];
 
-      document.getElementById("mainBtn").innerText = "Update Meeting";
-      document.getElementById("deleteBtn").style.display = "block";
-    },
-
-    events: function(fetchInfo, successCallback) {
-
-      const selectedRoom = document.getElementById("room").value;
-      const calendarId = calendars[selectedRoom];
-
-      fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calendarId })
-      })
-      .then(res => res.json())
-      .then(data => {
-
-        const events = (Array.isArray(data) ? data : []).map(e => ({
-          id: e.id,
-          title: e.summary || "Booked",
-          start: e.start?.dateTime || e.start,
-          end: e.end?.dateTime || e.end,
-          calendarId: calendarId
-        }));
-
-        successCallback(events);
-      });
-    }
-
-  });
-
-  calendar.render();
-
-  document.getElementById("room").addEventListener("change", () => {
-    calendar.refetchEvents();
-  });
-
-});
-
-function book() {
-
-  const data = {
-    room: document.getElementById("room").value,
-    date: document.getElementById("date").value,
-    time: document.getElementById("time").value,
-    duration: document.getElementById("duration").value,
-    name: document.getElementById("name").value,
-    title: document.getElementById("title").value
-  };
-
-  if (selectedEvent) {
-
-    fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(result => {
-
-      if (result.reply && result.reply.toLowerCase().includes("success")) {
-
-        return fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            eventId: selectedEvent.id,
-            calendarId: selectedEvent.calendarId
+          fetch("https://primary-production-877cc.up.railway.app/webhook/get-events", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ calendarId })
           })
-        });
-      }
+            .then(res => res.json())
+            .then(data => {
 
-      throw new Error();
-    })
-    .then(() => {
-      alert("Updated!");
-      resetForm();
-      calendar.refetchEvents();
-    })
-    .catch(() => {
-      alert("Update failed");
+              const events = (Array.isArray(data) ? data : [])
+                .map(e => ({
+                  id: e.id,
+                  title: e.summary || "Booked",
+                  start: e.start?.dateTime || e.start,
+                  end: e.end?.dateTime || e.end
+                }));
+
+              successCallback(events);
+
+            })
+            .catch(err => {
+              console.error(err);
+              failureCallback(err);
+            });
+
+        }
+
+      });
+
+      calendar.render();
+
+      document.getElementById("room").addEventListener("change", () => {
+        calendar.refetchEvents();
+      });
+
     });
 
-    return;
-  }
+    // BOOK OR UPDATE
+    function book() {
 
-  fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  })
-  .then(res => res.json())
-  .then(result => {
-    alert(result.reply);
-    calendar.refetchEvents();
-  });
-}
+      const data = {
+        room: document.getElementById("room").value,
+        date: document.getElementById("date").value,
+        time: document.getElementById("time").value,
+        duration: document.getElementById("duration").value,
+        name: document.getElementById("name").value,
+        title: document.getElementById("title").value
+      };
 
-function deleteSelected() {
+      const calendars = {
+        "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+        "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+      };
 
-  if (!selectedEvent) return;
+      // UPDATE MODE
+      if (selectedEvent) {
 
-  fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      eventId: selectedEvent.id,
-      calendarId: selectedEvent.calendarId
-    })
-  })
-  .then(() => {
-    alert("Deleted!");
-    resetForm();
-    calendar.refetchEvents();
-  })
-  .catch(() => {
-    alert("Delete failed");
-  });
-}
+        fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            eventId: selectedEvent.id,
+            calendarId: calendars[data.room]
+          })
+        })
+          .then(() => {
+            return fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            });
+          })
+          .then(res => res.json())
+          .then(() => {
 
-function resetForm() {
+            alert("Updated!");
 
-  selectedEvent = null;
+            resetForm();
+            calendar.refetchEvents();
 
-  document.getElementById("mainBtn").innerText = "Book Meeting";
-  document.getElementById("deleteBtn").style.display = "none";
+          });
 
-  document.getElementById("date").value = "";
-  document.getElementById("time").value = "";
-  document.getElementById("duration").value = 1;
-  document.getElementById("title").value = "";
-}
+        return;
+      }
 
-</script>
+      // CREATE
+      fetch("https://primary-production-877cc.up.railway.app/webhook/check-room", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      })
+        .then(res => res.json())
+        .then(result => {
+
+          alert(result.reply);
+          calendar.refetchEvents();
+
+        });
+
+    }
+
+    // DELETE BUTTON
+    function deleteSelected() {
+
+      if (!selectedEvent) return;
+
+      const selectedRoom = document.getElementById("room").value;
+
+      const calendars = {
+        "room 1": "ba658fb3262cc83f80a6e7ee29f01d92cde458075b541498b06007ecf2525ee2@group.calendar.google.com",
+        "room 2": "fb7664ab96162ab86d70ebafea95802ffa63e82816fcb7c85d41ce95cc5f2786@group.calendar.google.com"
+      };
+
+      fetch("https://primary-production-877cc.up.railway.app/webhook/delete-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          eventId: selectedEvent.id,
+          calendarId: calendars[selectedRoom]
+        })
+      })
+        .then(() => {
+          alert("Deleted!");
+          resetForm();
+          calendar.refetchEvents();
+        });
+
+    }
+
+    // RESET FORM
+    function resetForm() {
+      selectedEvent = null;
+
+      document.getElementById("mainBtn").innerText = "Book Meeting";
+      document.getElementById("deleteBtn").style.display = "none";
+
+      document.getElementById("date").value = "";
+      document.getElementById("time").value = "";
+      document.getElementById("duration").value = 1;
+      document.getElementById("title").value = "";
+    }
+
+  </script>
 
 </body>
+
 </html>
