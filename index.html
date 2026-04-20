@@ -127,16 +127,20 @@ document.addEventListener('DOMContentLoaded', function () {
     eventClick: function(info) {
 
       selectedEvent = info.event;
-
-      const start = new Date(info.event.start);
-      const local = toLocalInput(start);
-
-      document.getElementById("date").value = local.date;
-      document.getElementById("time").value = local.time;
-      document.getElementById("title").value = info.event.title;
+        const start = info.event.start;
+        
+        const year = start.getFullYear();
+        const month = String(start.getMonth() + 1).padStart(2, "0");
+        const day = String(start.getDate()).padStart(2, "0");
+        
+        const hours = String(start.getHours()).padStart(2, "0");
+        const minutes = String(start.getMinutes()).padStart(2, "0");
+        
+        document.getElementById("date").value = `${year}-${month}-${day}`;
+        document.getElementById("time").value = `${hours}:${minutes}`;
 
       if (info.event.end) {
-        const end = new Date(info.event.end);
+        const end = info.event.end;
         const duration = (end - start) / (1000 * 60 * 60);
         document.getElementById("duration").value = duration;
       }
